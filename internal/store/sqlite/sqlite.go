@@ -375,9 +375,10 @@ func (s *Store) GetPlayerByID(ctx context.Context, id string) (*store.Player, er
 }
 
 // GetPlayerByName retrieves a player by name (unique, the in-game name).
+// Matching is case-insensitive (ASCII) to mirror Mojang's profile lookup.
 func (s *Store) GetPlayerByName(ctx context.Context, name string) (*store.Player, error) {
 	query := `SELECT id, user_id, name, uuid, created_at, name_changed_at, skin_hash, skin_model, cape_hash
-	          FROM players WHERE name = ?`
+	          FROM players WHERE name = ? COLLATE NOCASE`
 	p := &store.Player{}
 	err := s.db.QueryRowContext(ctx, query, name).Scan(&p.ID, &p.UserID, &p.Name, &p.UUID, &p.CreatedAt, &p.NameChangedAt, &p.SkinHash, &p.SkinModel, &p.CapeHash)
 	if err != nil {

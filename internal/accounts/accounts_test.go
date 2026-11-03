@@ -298,6 +298,13 @@ func TestPlayers(t *testing.T) {
 		if !errors.Is(err, ErrPlayerNameTaken) {
 			t.Errorf("expected ErrPlayerNameTaken, got: %v", err)
 		}
+
+		// Try to create the same name with different casing under u2; Minecraft names
+		// are case-insensitively unique, so this must also be rejected.
+		_, err = svc.CreatePlayer(ctx, u2.ID, "steve", "")
+		if !errors.Is(err, ErrPlayerNameTaken) {
+			t.Errorf("expected ErrPlayerNameTaken for case-variant name, got: %v", err)
+		}
 	})
 
 	t.Run("offline profile UUID generation matching Notch/jeb_ vectors", func(t *testing.T) {
