@@ -382,6 +382,51 @@ func TestPlayerCRUDAnd1N(t *testing.T) {
 	}
 }
 
+// TestGetPlayerByNameCaseInsensitive verifies that GetPlayerByName matches names
+// regardless of ASCII casing, mirroring Mojang's profile lookup.
+func TestGetPlayerByNameCaseInsensitive(t *testing.T) {
+	s, _ := setupTestDB(t)
+	defer s.Close()
+
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	u := &store.User{
+		ID:                uuid.NewString(),
+		Email:             "owner@example.com",
+		PasswordHash:      "hash",
+		IsAdmin:           false,
+		PreferredLanguage: "en",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := s.CreateUser(ctx, u); err != nil {
+		t.Fatalf("failed to setup user: %v", err)
+	}
+
+	p := &store.Player{
+		ID:        uuid.NewString(),
+		UserID:    u.ID,
+		Name:      "Steve",
+		UUID:      "85a12345-1234-1234-1234-123456789abc",
+		CreatedAt: now,
+	}
+	if err := s.CreatePlayer(ctx, p); err != nil {
+		t.Fatalf("failed to create player: %v", err)
+	}
+
+	for _, variant := range []string{"Steve", "steve", "STEVE", "StEvE"} {
+		got, err := s.GetPlayerByName(ctx, variant)
+		if err != nil {
+			t.Errorf("GetPlayerByName(%q): %v", variant, err)
+			continue
+		}
+		if got.ID != p.ID {
+			t.Errorf("GetPlayerByName(%q) resolved to ID %q; want %q", variant, got.ID, p.ID)
+		}
+	}
+}
+
 // TestPlayerConflictAndNotFound verifies player constraints and errors map correctly.
 func TestPlayerConflictAndNotFound(t *testing.T) {
 	s, _ := setupTestDB(t)

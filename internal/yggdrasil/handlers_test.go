@@ -853,6 +853,34 @@ func TestProfilesBulkEmpty(t *testing.T) {
 	}
 }
 
+// TestProfilesBulkCaseInsensitive verifies that name-to-UUID lookup matches regardless
+// of ASCII casing. This is the canary for player discovery by username: an admin running
+// a command (e.g. /whitelist add) with a different casing than the stored profile must
+// still resolve the player instead of getting a "player does not exist" error.
+func TestProfilesBulkCaseInsensitive(t *testing.T) {
+	e := newTestEnv(t)
+
+	_, playerUUID, _ := createUserAndPlayer(t, e, "case@example.com", "strongpass", "CaseSensitive")
+
+	rec := e.do(t, http.MethodPost, "/api/profiles/minecraft", []string{"casesensitive"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d; want 200\nbody: %s", rec.Code, rec.Body.String())
+	}
+
+	var stubs []ProfileStub
+	decodeBody(t, rec, &stubs)
+
+	if len(stubs) != 1 {
+		t.Fatalf("got %d profiles; want 1 (case-insensitive match)", len(stubs))
+	}
+	if stubs[0].Name != "CaseSensitive" {
+		t.Errorf("resolved name = %q; want %q (canonical casing)", stubs[0].Name, "CaseSensitive")
+	}
+	if stubs[0].ID != undash(playerUUID) {
+		t.Errorf("resolved id = %q; want %q", stubs[0].ID, undash(playerUUID))
+	}
+}
+
 // TestJoinInvalidToken verifies that join with a non-existent access token returns 403.
 func TestJoinInvalidToken(t *testing.T) {
 	e := newTestEnv(t)
